@@ -1,5 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { api } from './helpers.ts';
+import { api, createProduct } from './helpers.ts';
+
+const ids = (body: { id: number }[]) => body.map((product) => product.id);
+
+describe('GET /api/products con filtros', () => {
+  it('filtra por categoría', async () => {
+    const res = await api().get('/api/products?category=hogar');
+
+    expect(res.status).toBe(200);
+    expect(ids(res.body)).toEqual([6, 7]);
+  });
+
+  it('devuelve una lista vacía si la categoría no tiene productos', async () => {
+    const res = await api().get('/api/products?category=jardin');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('filtra por precio máximo, incluido el propio límite', async () => {
+    const limite = createProduct({ priceCents: 3000 });
+    createProduct({ priceCents: 3001 });
+
+    const res = await api().get('/api/products?maxPriceCents=3000');
+
+    expect(res.status).toBe(200);
+    expect(ids(res.body)).toEqual([2, 4, 5, 6, limite.id]);
+  });
+
+  it('combina categoría y precio máximo', async () => {
+    const res = await api().get('/api/products?category=electronica&maxPriceCents=10000');
+
+    expect(res.status).toBe(200);
+    expect(ids(res.body)).toEqual([1, 2]);
+  });
+
+  it.each([
+    ['maxPriceCents no numérico', 'maxPriceCents=barato'],
+    ['maxPriceCents negativo', 'maxPriceCents=-1'],
+    ['maxPriceCents con decimales', 'maxPriceCents=29.99'],
+    ['maxPriceCents vacío', 'maxPriceCents='],
+    ['category vacía', 'category='],
+    ['category repetida', 'category=hogar&category=libros'],
+  ])('responde 400 si %s', async (_caso, query) => {
+    const res = await api().get(`/api/products?${query}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
 
 describe('GET /api/products', () => {
   it('devuelve el catálogo completo', async () => {
