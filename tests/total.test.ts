@@ -48,6 +48,16 @@ describe('calculateTotals', () => {
     expect(totals).toEqual({ subtotalCents: 4200, discountCents: 500, totalCents: 3700 });
   });
 
+  it('limita el cupón fijo al subtotal para que el total no sea negativo (issue #1)', () => {
+    // Cuaderno A5 (12,95 €) con la tarjeta regalo REGALO25 (25 €)
+    const totals = calculateTotals(
+      [{ unitPriceCents: 1295, quantity: 1 }],
+      coupon({ type: 'fixed', value: 2500 }),
+    );
+
+    expect(totals).toEqual({ subtotalCents: 1295, discountCents: 1295, totalCents: 0 });
+  });
+
   it('no descuenta nada si no se llega al pedido mínimo', () => {
     const totals = calculateTotals(
       [{ unitPriceCents: 1295, quantity: 1 }],
